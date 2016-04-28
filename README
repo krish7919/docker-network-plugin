@@ -1,0 +1,126 @@
+=================
+::Docker plugin::
+=================
+----------------
+:Plan of Action:
+----------------
+Currently Docker supports volume and network driver plugins. In the future it will support additional plugin types.
+Example Plugins (https://docs.docker.com/engine/extend/plugins/):
+  Volume:
+    Blockbridge plugin
+    Convoy plugin
+    Flocker plugin
+    GlusterFS plugin
+    Horcrux Volume Plugin 
+    IPFS Volume Plugin 
+    Keywhiz plugin
+    Netshare plugin
+    OpenStorage Plugin
+    Quobyte Volume Plugin
+    REX-Ray plugin
+    Contiv Volume Plugin
+  Network:
+    Contiv Networking (https://github.com/contiv/netplugin) 
+    Weave Network Plugin (https://github.com/weaveworks/weave/tree/master/plugin)
+    Kuryr Network Plugin
+    Local Persist Plugin
+  Authorization:
+    ?? Only in docker v1.10
+    ?? https://docs.docker.com/engine/extend/plugins_authorization/
+    ?? https://github.com/docker/docker/blob/master/docs/extend/plugins_authorization.md
+  IPAM:
+    ??
+-----
+:IRC:
+-----
+  #docker-network
+----------
+:Ref Docs:
+----------
+  https://github.com/docker/docker/blob/master/docs/extend/plugin_api.md
+  https://github.com/docker/libnetwork/blob/master/docs/design.md
+  https://github.com/docker/libnetwork/blob/master/docs/remote.md
+  Remote IPAM: https://github.com/docker/libnetwork/blob/master/docs/ipam.md
+----------------------------------
+:Configuration for docker plugins:
+----------------------------------
+mdnp.json file which contains the below info
+mdnp.json can be located in "/etc/docker/plugins" or "/usr/lib/docker/plugins"
+plugin name would then me "mdnp", since file name is mdnp.json
+Order in which docker searchs for plugins: /run/docker/plugins (for .sock), /etc/docker/plugins, /usr/lib/docker/plugins
+JSON format of plugin:
+    {
+      "Name": "plugin-example",
+      "Addr": "https://example.com/docker/plugin",
+      //"TLSConfig": {
+      //  "InsecureSkipVerify": false,
+      //  "CAFile": "/usr/shared/docker/certs/example-ca.pem",
+      //  "CertFile": "/usr/shared/docker/certs/example-cert.pem",
+      //  "KeyFile": "/usr/shared/docker/certs/example-key.pem",
+      //}
+    }
+Plugins should be started before docker and stopped after docker. Use upstart hooks or systemd hooks to manage the dependency.
+When upgrading a plugin, you should first stop the Docker daemon, upgrade the plugin, then start Docker again.
+Plugins are not activated automatically at Docker daemon startup. Rather, they are activated only lazily, or on-demand, when they are needed.
+
+------
+:Goal:
+------
+Build a remote network plugin.
+------------------
+:Short term goals:
+------------------
+Use libnetwork/CNM rather than the comparatively newer CNI model.
+No backend network for now. Create a stub network plugin which assigns an address of 192.168.X.1 to my local docker container, with a default gateway of local eth0 interface for network access.
+Discuss the `long term goals` once there is clarity on the project; so this for now, is a toy plugin for all intents & purposes
+------------
+:How to run:
+------------
+Cleanup from prev runs: sudo docker network rm mynet && docker network ls
+Stop docker: sudo service stop docker
+Run the plugin: sudo ./bin/main 2>&1 > mdnp.log; sudo tail -F mdnp.log
+Start docker: sudo service start docker
+Create the network: sudo docker network create --driver=mdnp mynet
+Run a container with custom network driver: docker run --net=mynet krish/test:v1
+=-=-=-=
+CAVEAT:
+=-=-=-=
+  The source has a hardcoded value for "veth0" for use by the container.
+  This can be bypassed (and should be!) by creating a dynamic veth for every container by using the golang netlink package.
+  Workaround for testing:
+    Create a veth interface: sudo ip link add type veth
+    Should have a veth0 now.
+    Configure it: sudo ifconfig veth0 172.16.0.205 netmask 255.255.255.0 up
+    Cleaup: sudo ip link del veth1
+
+----------------
+:Example output:
+----------------
+docker exec -it happy_leakey bash
+root@e69f0d8ff13d:/# ifconfig    
+eth1      Link encap:Ethernet  HWaddr 02:42:ac:13:00:02  
+          inet addr:172.19.0.2  Bcast:0.0.0.0  Mask:255.255.0.0
+          inet6 addr: fe80::42:acff:fe13:2/64 Scope:Link
+          UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
+          RX packets:29 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:12 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:4219 (4.2 KB)  TX bytes:928 (928.0 B)
+
+krish-mdnp0 Link encap:Ethernet  HWaddr aa:04:e9:41:14:8c  
+          inet addr:172.18.0.2  Bcast:0.0.0.0  Mask:255.255.0.0
+          UP BROADCAST MULTICAST  MTU:1500  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:1000 
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
+lo        Link encap:Local Loopback  
+          inet addr:127.0.0.1  Mask:255.0.0.0
+          inet6 addr: ::1/128 Scope:Host
+          UP LOOPBACK RUNNING  MTU:65536  Metric:1
+          RX packets:0 errors:0 dropped:0 overruns:0 frame:0
+          TX packets:0 errors:0 dropped:0 overruns:0 carrier:0
+          collisions:0 txqueuelen:0 
+          RX bytes:0 (0.0 B)  TX bytes:0 (0.0 B)
+
