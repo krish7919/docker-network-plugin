@@ -1,9 +1,9 @@
 =================
 ::Docker plugin::
 =================
-----------------
-:Plan of Action:
-----------------
+-------
+:Notes:
+-------
 Currently Docker supports volume and network driver plugins. In the future it will support additional plugin types.
 Example Plugins (https://docs.docker.com/engine/extend/plugins/):
   Volume:
@@ -71,7 +71,7 @@ Build a remote network plugin.
 :Short term goals:
 ------------------
 Use libnetwork/CNM rather than the comparatively newer CNI model.
-No backend network for now. Create a stub network plugin which assigns an address of 192.168.X.1 to my local docker container, with a default gateway of local eth0 interface for network access.
+No backend network for now; no intelligence.
 Discuss the `long term goals` once there is clarity on the project; so this for now, is a toy plugin for all intents & purposes
 ------------
 :How to run:

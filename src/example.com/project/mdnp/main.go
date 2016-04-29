@@ -48,6 +48,7 @@ func (self *MyDockerNetworkPlugin) CreateEndpoint(req *n.CreateEndpointRequest) 
 	intfInfo := new(n.EndpointInterface)
 
 	if req.Interface == nil {
+		// case never hit in docker v1.11.0, but in tests
 		intfInfo.Address = "1.1.1.1/24"
 		// AddressIPv6 - optional
 		intfInfo.MacAddress = "00:00:00:00:00:aa"
